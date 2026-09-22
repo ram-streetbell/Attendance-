@@ -31,6 +31,11 @@ jobs:
         run: sed -i '/import androidx.compose.foundation.layout.weight/d' android/attendance-app/src/main/java/com/streetbell/attendance/MainActivity.kt
       - name: Build APKs
         run: gradle --no-daemon -p android :attendance-app:assembleDebug :attendance-app:assembleRelease :admin-app:assembleDebug :admin-app:assembleRelease
+      - name: Verify APK outputs
+        run: |
+          find android -type f -name '*.apk' -print
+          test -f android/attendance-app/build/outputs/apk/debug/attendance-app-debug.apk
+          test -f android/admin-app/build/outputs/apk/debug/admin-app-debug.apk
       - name: Upload APKs to Actions artifact
         uses: actions/upload-artifact@v4
         with:
@@ -46,12 +51,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view v1.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v1.1.0 --title "Attendance Platform v1.1.0" --generate-notes --repo "$GITHUB_REPOSITORY"
-      - name: Publish installable APKs to v1.1.0 release
+      - name: Publish installable debug APKs to v1.1.0 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload v1.1.0 \
-            android/attendance-app/build/outputs/apk/release/attendance-app-release.apk#Employee-Attendance-v1.1.0.apk \
-            android/admin-app/build/outputs/apk/release/admin-app-release.apk#Attendance-Admin-v1.1.0.apk \
+            android/attendance-app/build/outputs/apk/debug/attendance-app-debug.apk#Employee-Attendance-v1.1.0.apk \
+            android/admin-app/build/outputs/apk/debug/admin-app-debug.apk#Attendance-Admin-v1.1.0.apk \
             --clobber \
             --repo "$GITHUB_REPOSITORY"
