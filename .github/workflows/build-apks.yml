@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android:
@@ -27,7 +27,7 @@ jobs:
         run: sed -i '/import androidx.compose.foundation.layout.weight/d' android/attendance-app/src/main/java/com/streetbell/attendance/MainActivity.kt
       - name: Build APKs
         run: gradle --no-daemon -p android :attendance-app:assembleDebug :attendance-app:assembleRelease :admin-app:assembleDebug :admin-app:assembleRelease
-      - name: Upload APKs
+      - name: Upload APKs to Actions artifact
         uses: actions/upload-artifact@v4
         with:
           name: attendance-apks
@@ -37,3 +37,12 @@ jobs:
             android/attendance-app/build/outputs/apk/release/*.apk
             android/admin-app/build/outputs/apk/debug/*.apk
             android/admin-app/build/outputs/apk/release/*.apk
+      - name: Publish installable APKs to v1.0.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v1.0.0 \
+            android/attendance-app/build/outputs/apk/debug/attendance-app-debug.apk#Employee-Attendance-v1.0.0.apk \
+            android/admin-app/build/outputs/apk/debug/admin-app-debug.apk#Attendance-Admin-v1.0.0.apk \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
