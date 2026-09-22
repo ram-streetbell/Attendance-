@@ -23,6 +23,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Remove invalid Compose weight import
+        run: sed -i '/import androidx.compose.foundation.layout.weight/d' android/attendance-app/src/main/java/com/streetbell/attendance/MainActivity.kt
       - name: Build APKs
         run: gradle --no-daemon -p android :attendance-app:assembleDebug :attendance-app:assembleRelease :admin-app:assembleDebug :admin-app:assembleRelease
       - name: Upload APKs
