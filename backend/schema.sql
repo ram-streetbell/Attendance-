@@ -1,13 +1,13 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE businesses (
+CREATE TABLE IF NOT EXISTS businesses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE admins (
+CREATE TABLE IF NOT EXISTS admins (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   email TEXT NOT NULL UNIQUE,
@@ -18,7 +18,7 @@ CREATE TABLE admins (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE devices (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE employees (
+CREATE TABLE IF NOT EXISTS employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   employee_code TEXT NOT NULL,
@@ -43,13 +43,13 @@ CREATE TABLE employees (
   UNIQUE(business_id, employee_code)
 );
 
-CREATE TABLE device_employees (
+CREATE TABLE IF NOT EXISTS device_employees (
   device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
   PRIMARY KEY(device_id, employee_id)
 );
 
-CREATE TABLE attendance_events (
+CREATE TABLE IF NOT EXISTS attendance_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
@@ -65,6 +65,6 @@ CREATE TABLE attendance_events (
   UNIQUE(device_id, client_event_id)
 );
 
-CREATE INDEX attendance_business_time_idx ON attendance_events(business_id, captured_at DESC);
-CREATE INDEX attendance_employee_time_idx ON attendance_events(employee_id, captured_at DESC);
-CREATE INDEX device_heartbeat_idx ON devices(business_id, last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS attendance_business_time_idx ON attendance_events(business_id, captured_at DESC);
+CREATE INDEX IF NOT EXISTS attendance_employee_time_idx ON attendance_events(employee_id, captured_at DESC);
+CREATE INDEX IF NOT EXISTS device_heartbeat_idx ON devices(business_id, last_seen_at DESC);
