@@ -3,11 +3,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
-
 android { namespace = "com.streetbell.attendance"; compileSdk = 35
-    defaultConfig { applicationId = "com.streetbell.attendance"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1.0" }
+    defaultConfig { applicationId = "com.streetbell.attendance"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "1.0.0" }
 }
-
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom); androidTestImplementation(composeBom)
@@ -21,4 +19,5 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.1")
     implementation("androidx.camera:camera-view:1.4.1")
     implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
