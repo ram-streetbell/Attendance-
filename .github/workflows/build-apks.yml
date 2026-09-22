@@ -23,6 +23,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Configure production backend URL
+        run: |
+          sed -i 's|http://10.0.2.2:8080|https://attendance-backend-rkny.onrender.com|g' android/attendance-app/src/main/java/com/streetbell/attendance/MainActivity.kt
+          sed -i 's|http://10.0.2.2:8080|https://attendance-backend-rkny.onrender.com|g' android/admin-app/src/main/java/com/streetbell/admin/MainActivity.kt
       - name: Remove invalid Compose weight import
         run: sed -i '/import androidx.compose.foundation.layout.weight/d' android/attendance-app/src/main/java/com/streetbell/attendance/MainActivity.kt
       - name: Build APKs
@@ -30,19 +34,24 @@ jobs:
       - name: Upload APKs to Actions artifact
         uses: actions/upload-artifact@v4
         with:
-          name: attendance-apks
+          name: attendance-apks-v1.1.0
           if-no-files-found: error
           path: |
             android/attendance-app/build/outputs/apk/debug/*.apk
             android/attendance-app/build/outputs/apk/release/*.apk
             android/admin-app/build/outputs/apk/debug/*.apk
             android/admin-app/build/outputs/apk/release/*.apk
-      - name: Publish installable APKs to v1.0.0 release
+      - name: Create v1.1.0 release if needed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload v1.0.0 \
-            android/attendance-app/build/outputs/apk/debug/attendance-app-debug.apk#Employee-Attendance-v1.0.0.apk \
-            android/admin-app/build/outputs/apk/debug/admin-app-debug.apk#Attendance-Admin-v1.0.0.apk \
+          gh release view v1.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v1.1.0 --title "Attendance Platform v1.1.0" --generate-notes --repo "$GITHUB_REPOSITORY"
+      - name: Publish installable APKs to v1.1.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v1.1.0 \
+            android/attendance-app/build/outputs/apk/release/attendance-app-release.apk#Employee-Attendance-v1.1.0.apk \
+            android/admin-app/build/outputs/apk/release/admin-app-release.apk#Attendance-Admin-v1.1.0.apk \
             --clobber \
             --repo "$GITHUB_REPOSITORY"
