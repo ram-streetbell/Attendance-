@@ -1,4 +1,4 @@
-name: Build and Release v1.3
+name: Build and Release v1.4
 
 on:
   push:
@@ -28,29 +28,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find android -type f -name '*.apk' -print -exec ls -lh {} \;
           attendance_apk="$(find android/attendance-app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
           admin_apk="$(find android/admin-app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
           test -n "$attendance_apk" && test -s "$attendance_apk"
           test -n "$admin_apk" && test -s "$admin_apk"
-          cp "$attendance_apk" Employee-Attendance-v1.3.apk
-          cp "$admin_apk" Attendance-Admin-v1.3.apk
-          ls -lh Employee-Attendance-v1.3.apk Attendance-Admin-v1.3.apk
+          cp "$attendance_apk" Employee-Attendance-v1.4.apk
+          cp "$admin_apk" Attendance-Admin-v1.4.apk
+          ls -lh Employee-Attendance-v1.4.apk Attendance-Admin-v1.4.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: attendance-apks-v1.3
+          name: attendance-apks-v1.4
           if-no-files-found: error
           path: |
-            Employee-Attendance-v1.3.apk
-            Attendance-Admin-v1.3.apk
-      - name: Create or update v1.3 release
+            Employee-Attendance-v1.4.apk
+            Attendance-Admin-v1.4.apk
+      - name: Create v1.4 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v1.3 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create v1.3 --target "$GITHUB_SHA" --title "v1.3" --notes "Attendance platform admin UI, device pairing and date-range attendance improvements" --repo "$GITHUB_REPOSITORY"
-          fi
-          gh release delete-asset v1.3 Attendance-Admin-v1.3.apk --yes --repo "$GITHUB_REPOSITORY" || true
-          gh release delete-asset v1.3 Employee-Attendance-v1.3.apk --yes --repo "$GITHUB_REPOSITORY" || true
-          gh release upload v1.3 Employee-Attendance-v1.3.apk Attendance-Admin-v1.3.apk --clobber --repo "$GITHUB_REPOSITORY"
+          gh release create v1.4 --target "$GITHUB_SHA" --title "v1.4" --notes "Admin control center, device pairing and date-range staff attendance" --repo "$GITHUB_REPOSITORY"
+          gh release upload v1.4 Employee-Attendance-v1.4.apk Attendance-Admin-v1.4.apk --repo "$GITHUB_REPOSITORY"
