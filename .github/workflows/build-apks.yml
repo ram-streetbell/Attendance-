@@ -39,24 +39,24 @@ jobs:
       - name: Upload APKs to Actions artifact
         uses: actions/upload-artifact@v4
         with:
-          name: attendance-apks-v1.1.0
+          name: attendance-apks-v1.2.0
           if-no-files-found: error
           path: |
             android/attendance-app/build/outputs/apk/debug/*.apk
             android/attendance-app/build/outputs/apk/release/*.apk
             android/admin-app/build/outputs/apk/debug/*.apk
             android/admin-app/build/outputs/apk/release/*.apk
-      - name: Create v1.1.0 release if needed
+      - name: Create v1.2.0 release if needed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v1.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v1.1.0 --title "Attendance Platform v1.1.0" --generate-notes --repo "$GITHUB_REPOSITORY"
-      - name: Publish installable debug APKs to v1.1.0 release
+          gh release view v1.2.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v1.2.0 --title "Attendance Platform v1.2.0" --generate-notes --repo "$GITHUB_REPOSITORY"
+      - name: Publish installable debug APKs to v1.2.0 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload v1.1.0 \
-            android/attendance-app/build/outputs/apk/debug/attendance-app-debug.apk#Employee-Attendance-v1.1.0.apk \
-            android/admin-app/build/outputs/apk/debug/admin-app-debug.apk#Attendance-Admin-v1.1.0.apk \
+          gh release upload v1.2.0 \
+            android/attendance-app/build/outputs/apk/debug/attendance-app-debug.apk#Employee-Attendance-v1.2.0.apk \
+            android/admin-app/build/outputs/apk/debug/admin-app-debug.apk#Attendance-Admin-v1.2.0.apk \
             --clobber \
             --repo "$GITHUB_REPOSITORY"
