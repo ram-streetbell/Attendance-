@@ -75,11 +75,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val p = getSharedPreferences("attendance", Context.MODE_PRIVATE)
-        baseUrl = p.getString("baseUrl", baseUrl) ?: baseUrl
-        deviceToken = p.getString("deviceToken", null)
-        setUi(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) permission.launch(Manifest.permission.CAMERA)
+        val prefs = getSharedPreferences("attendance", Context.MODE_PRIVATE)
+        baseUrl = prefs.getString("baseUrl", baseUrl) ?: baseUrl
+        deviceToken = prefs.getString("deviceToken", null)
+        val allowed = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        setUi(allowed)
+        if (!allowed) permission.launch(Manifest.permission.CAMERA)
     }
 
     private fun setUi(camera: Boolean) { setContent { App(camera) } }
@@ -113,10 +114,7 @@ class MainActivity : ComponentActivity() {
             Text("Attendance", style = MaterialTheme.typography.headlineMedium)
             Text(message, modifier = Modifier.padding(8.dp))
             if (cameraEnabled) {
-                AndroidView(
-                    factory = { context -> PreviewView(context).also { startCamera(it) { d, p, s -> detected = d; person = p; score = s } } },
-                    modifier = Modifier.fillMaxWidth().height(420.dp)
-                )
+                AndroidView(factory = { context -> PreviewView(context).also { startCamera(it) { d, p, s -> detected = d; person = p; score = s } } }, modifier = Modifier.fillMaxWidth().height(420.dp))
             } else {
                 Text("Camera permission required", modifier = Modifier.padding(32.dp))
             }
@@ -138,8 +136,7 @@ class MainActivity : ComponentActivity() {
             val request = Request.Builder().url("$baseUrl/api/v1/device/pair").post(body).build()
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("Pairing failed (${response.code})")
-                val json = JSONObject(response.body?.string() ?: error("Empty pairing response"))
-                deviceToken = json.getString("deviceToken")
+                deviceToken = JSONObject(response.body?.string() ?: error("Empty pairing response")).getString("deviceToken")
             }
             getSharedPreferences("attendance", MODE_PRIVATE).edit().putString("baseUrl", baseUrl).putString("deviceToken", deviceToken).apply()
             runOnUiThread { done(true, "Device paired") }
@@ -184,12 +181,14 @@ class MainActivity : ComponentActivity() {
                         val face = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
                         if (face == null) { onMatch(false, null, 0f); return@addOnSuccessListener }
                         val template = FaceTemplate.from(yuvToBitmap(proxy), face.boundingBox)
-                        var best: Person? = null; var bestScore = 0f
+                        var best: Person? = null
+                        var bestScore = 0f
                         if (template != null) people.forEach { p -> val s = FaceTemplate.similarity(template, p.template); if (s > bestScore) { bestScore = s; best = p } }
                         onMatch(true, if (bestScore >= 0.82f) best else null, bestScore)
                     }.addOnCompleteListener { proxy.close() }
                 }
-                provider.unbindAll(); provider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, analysis, capture)
+                provider.unbindAll()
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, analysis, capture)
             } catch (_: Exception) { }
         }, ContextCompat.getMainExecutor(this))
     }
@@ -205,43 +204,99 @@ class MainActivity : ComponentActivity() {
                 override fun onError(exception: ImageCaptureException) { busy = false; runOnUiThread { done("Photo capture failed") } }
                 override fun onImageSaved(result: ImageCapture.OutputFileResults) {
                     try {
-                        val sig = http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/cloudinary/signature").get()))).execute().use { r -> if (!r.isSuccessful) error("Cloudinary authorization failed"); JSONObject(r.body?.string() ?: error("Empty signature")) }
+                        val sig = http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/cloudinary/signature").get())).execute().use { r ->
+                            if (!r.isSuccessful) error("Cloudinary authorization failed")
+                            JSONObject(r.body?.string() ?: error("Empty signature"))
+                        }
                         val upload = MultipartBody.Builder().setType(MultipartBody.FORM)
                             .addFormDataPart("file", file.name, file.asRequestBody("image/jpeg".toMediaType()))
                             .addFormDataPart("api_key", sig.getString("apiKey"))
                             .addFormDataPart("timestamp", sig.getString("timestamp"))
                             .addFormDataPart("signature", sig.getString("signature"))
-                            .addFormDataPart("folder", sig.getString("folder")).build()
-                        val cloud = http.newCall(Request.Builder().url("https://api.cloudinary.com/v1_1/${sig.getString("cloudName")}/image/upload").post(upload).build()).execute().use { r -> if (!r.isSuccessful) error("Photo upload failed"); JSONObject(r.body?.string() ?: error("Empty upload response")) }
-                        val event = JSONObject().put("clientEventId", UUID.randomUUID().toString()).put("employeeId", employeeId).put("status", kind).put("capturedAt", Instant.now().toString()).put("faceMatchScore", score).put("cloudinaryPublicId", cloud.optString("public_id")).put("cloudinaryAssetId", cloud.optString("asset_id")).put("photoSecureUrl", cloud.optString("secure_url"))
-                        http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance").post(event.toString().toRequestBody("application/json".toMediaType())))).execute().use { r -> if (!r.isSuccessful) error(if (r.code == 409) "Same status was already recorded recently" else "Attendance submission failed (${r.code})") }
-                        file.delete(); busy = false; runOnUiThread { done("Attendance recorded: $kind") }
-                    } catch (e: Exception) { file.delete(); busy = false; runOnUiThread { done(e.message ?: "Attendance failed") } }
+                            .addFormDataPart("folder", sig.getString("folder"))
+                            .build()
+                        val cloud = http.newCall(Request.Builder().url("https://api.cloudinary.com/v1_1/${sig.getString("cloudName")}/image/upload").post(upload).build()).execute().use { r ->
+                            if (!r.isSuccessful) error("Photo upload failed")
+                            JSONObject(r.body?.string() ?: error("Empty upload response"))
+                        }
+                        val event = JSONObject()
+                            .put("clientEventId", UUID.randomUUID().toString())
+                            .put("employeeId", employeeId)
+                            .put("status", kind)
+                            .put("capturedAt", Instant.now().toString())
+                            .put("faceMatchScore", score)
+                            .put("cloudinaryPublicId", cloud.optString("public_id"))
+                            .put("cloudinaryAssetId", cloud.optString("asset_id"))
+                            .put("photoSecureUrl", cloud.optString("secure_url"))
+                        http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance").post(event.toString().toRequestBody("application/json".toMediaType())))).execute().use { r ->
+                            if (!r.isSuccessful) error(if (r.code == 409) "Same status was already recorded recently" else "Attendance submission failed (${r.code})")
+                        }
+                        file.delete(); busy = false
+                        runOnUiThread { done("Attendance recorded: $kind") }
+                    } catch (e: Exception) {
+                        file.delete(); busy = false
+                        runOnUiThread { done(e.message ?: "Attendance failed") }
+                    }
                 }
             })
         }
     }
 
-    private fun auth(builder: Request.Builder) = builder.header("x-device-token", deviceToken ?: "").build()
+    private fun auth(builder: Request.Builder): Request = builder.header("x-device-token", deviceToken ?: "").build()
 
     private object FaceTemplate {
         fun from(source: Bitmap, box: Rect): FloatArray? {
-            val p = (box.width() * .18f).toInt(); val l = (box.left-p).coerceAtLeast(0); val t = (box.top-p).coerceAtLeast(0); val r = (box.right+p).coerceAtMost(source.width); val b = (box.bottom+p).coerceAtMost(source.height)
+            val p = (box.width() * .18f).toInt()
+            val l = (box.left - p).coerceAtLeast(0)
+            val t = (box.top - p).coerceAtLeast(0)
+            val r = (box.right + p).coerceAtMost(source.width)
+            val b = (box.bottom + p).coerceAtMost(source.height)
             if (r <= l || b <= t) return null
-            val small = Bitmap.createScaledBitmap(Bitmap.createBitmap(source, l, t, r-l, b-t), 32, 32, true)
-            val v = FloatArray(1024); var i = 0; var mean = 0f
-            for (y in 0 until 32) for (x in 0 until 32) { val px = small.getPixel(x,y); val q = (.299f*((px shr 16) and 255)+.587f*((px shr 8) and 255)+.114f*(px and 255))/255f; v[i++] = q; mean += q }
-            mean /= 1024f; var n = 0f; for (j in v.indices) { v[j] -= mean; n += v[j]*v[j] }; n = sqrt(n).coerceAtLeast(.0001f); for (j in v.indices) v[j] /= n; return v
+            val small = Bitmap.createScaledBitmap(Bitmap.createBitmap(source, l, t, r - l, b - t), 32, 32, true)
+            val v = FloatArray(1024)
+            var i = 0
+            var mean = 0f
+            for (y in 0 until 32) for (x in 0 until 32) {
+                val px = small.getPixel(x, y)
+                val q = (.299f * ((px shr 16) and 255) + .587f * ((px shr 8) and 255) + .114f * (px and 255)) / 255f
+                v[i++] = q; mean += q
+            }
+            mean /= 1024f
+            var n = 0f
+            for (j in v.indices) { v[j] -= mean; n += v[j] * v[j] }
+            n = sqrt(n).coerceAtLeast(.0001f)
+            for (j in v.indices) v[j] /= n
+            return v
         }
-        fun similarity(a: FloatArray, b: FloatArray): Float { var d = 0f; for (i in 0 until minOf(a.size,b.size)) d += a[i]*b[i]; return ((d+1f)/2f).coerceIn(0f,1f) }
+        fun similarity(a: FloatArray, b: FloatArray): Float {
+            var d = 0f
+            for (i in 0 until minOf(a.size, b.size)) d += a[i] * b[i]
+            return ((d + 1f) / 2f).coerceIn(0f, 1f)
+        }
     }
 
     private fun yuvToBitmap(proxy: ImageProxy): Bitmap {
-        val y = proxy.planes[0].buffer; val u = proxy.planes[1].buffer; val v = proxy.planes[2].buffer
-        val yb = ByteArray(y.remaining()).also { y.get(it) }; val ub = ByteArray(u.remaining()).also { u.get(it) }; val vb = ByteArray(v.remaining()).also { v.get(it) }
-        val w = proxy.width; val h = proxy.height; val nv21 = ByteArray(w*h+w*h/2); System.arraycopy(yb,0,nv21,0,minOf(yb.size,w*h)); var pos=w*h
-        val up=proxy.planes[1]; val vp=proxy.planes[2]
-        for (row in 0 until h/2) for (col in 0 until w/2) { val ui=row*up.rowStride+col*up.pixelStride; val vi=row*vp.rowStride+col*vp.pixelStride; if (ui<ub.size && vi<vb.size && pos+1<nv21.size) { nv21[pos++]=vb[vi]; nv21[pos++]=ub[ui] } }
-        val out=ByteArrayOutputStream(); YuvImage(nv21,ImageFormat.NV21,w,h,null).compressToJpeg(Rect(0,0,w,h),70,out); val bytes=out.toByteArray(); return BitmapFactory.decodeByteArray(bytes,0,bytes.size) ?: error("Unable to decode camera frame")
+        val y = proxy.planes[0].buffer
+        val u = proxy.planes[1].buffer
+        val v = proxy.planes[2].buffer
+        val yb = ByteArray(y.remaining()).also { y.get(it) }
+        val ub = ByteArray(u.remaining()).also { u.get(it) }
+        val vb = ByteArray(v.remaining()).also { v.get(it) }
+        val w = proxy.width
+        val h = proxy.height
+        val nv21 = ByteArray(w * h + w * h / 2)
+        System.arraycopy(yb, 0, nv21, 0, minOf(yb.size, w * h))
+        var pos = w * h
+        val up = proxy.planes[1]
+        val vp = proxy.planes[2]
+        for (row in 0 until h / 2) for (col in 0 until w / 2) {
+            val ui = row * up.rowStride + col * up.pixelStride
+            val vi = row * vp.rowStride + col * vp.pixelStride
+            if (ui < ub.size && vi < vb.size && pos + 1 < nv21.size) { nv21[pos++] = vb[vi]; nv21[pos++] = ub[ui] }
+        }
+        val out = ByteArrayOutputStream()
+        YuvImage(nv21, ImageFormat.NV21, w, h, null).compressToJpeg(Rect(0, 0, w, h), 70, out)
+        val bytes = out.toByteArray()
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: error("Unable to decode camera frame")
     }
 }
