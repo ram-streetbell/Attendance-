@@ -21,6 +21,8 @@ jobs:
           java-version: '17'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
       - name: Download FaceNet model
         shell: bash
         run: |
@@ -33,7 +35,7 @@ jobs:
           done
       - name: Build Android APKs
         working-directory: android
-        run: gradle --no-daemon :attendance-app:assembleDebug :admin-app:assembleDebug
+        run: gradle --no-daemon --stacktrace :attendance-app:assembleDebug :admin-app:assembleDebug
       - name: Verify and stage APKs
         shell: bash
         run: |
