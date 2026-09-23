@@ -24,16 +24,16 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Android apps
+      - name: Build signed Android APKs
         working-directory: android
-        run: gradle --no-daemon :attendance-app:assembleRelease :admin-app:assembleRelease
+        run: gradle --no-daemon :attendance-app:assembleDebug :admin-app:assembleDebug
 
       - name: Verify and stage APKs
         shell: bash
         run: |
           set -euo pipefail
-          attendance_apk="$(find android/attendance-app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
-          admin_apk="$(find android/admin-app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
+          attendance_apk="$(find android/attendance-app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
+          admin_apk="$(find android/admin-app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
           test -n "$attendance_apk" && test -s "$attendance_apk"
           test -n "$admin_apk" && test -s "$admin_apk"
           cp "$attendance_apk" Employee-Attendance-v1.4.apk
@@ -61,8 +61,6 @@ jobs:
 
           release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.4" --jq '.id')"
 
-          # Remove old assets using the release ID. The /releases/tags/:tag/assets
-          # endpoint does not exist; assets are addressed by release ID.
           for asset in Employee-Attendance-v1.4.apk Attendance-Admin-v1.4.apk; do
             asset_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate --jq ".[] | select(.name == \"$asset\") | .id" | head -n 1 || true)"
             if [ -n "$asset_id" ]; then
