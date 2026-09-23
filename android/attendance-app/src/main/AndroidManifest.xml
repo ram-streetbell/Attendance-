@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/AppTheme" android:label="Attendance">
+    <application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/AppTheme" android:label="Attendance">
         <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
