@@ -28,12 +28,21 @@ jobs:
         working-directory: android
         run: gradle --no-daemon :attendance-app:assembleRelease :admin-app:assembleRelease
 
-      - name: Verify APKs
+      - name: Verify and stage APKs
+        shell: bash
         run: |
-          test -s android/attendance-app/build/outputs/apk/release/attendance-app-release.apk
-          test -s android/admin-app/build/outputs/apk/release/admin-app-release.apk
-          cp android/attendance-app/build/outputs/apk/release/attendance-app-release.apk Employee-Attendance-v1.2.apk
-          cp android/admin-app/build/outputs/apk/release/admin-app-release.apk Attendance-Admin-v1.2.apk
+          set -euo pipefail
+          echo "APK files produced:"
+          find android -type f -name '*.apk' -print -exec ls -lh {} \;
+          attendance_apk="$(find android/attendance-app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          admin_apk="$(find android/admin-app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$attendance_apk"
+          test -n "$admin_apk"
+          test -s "$attendance_apk"
+          test -s "$admin_apk"
+          cp "$attendance_apk" Employee-Attendance-v1.2.apk
+          cp "$admin_apk" Attendance-Admin-v1.2.apk
+          ls -lh Employee-Attendance-v1.2.apk Attendance-Admin-v1.2.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
