@@ -1,4 +1,4 @@
-name: Build and Release v1.4
+name: Build and Release v1.5
 
 on:
   push:
@@ -14,59 +14,48 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Build signed Android APKs
+      - name: Build Android APKs
         working-directory: android
         run: gradle --no-daemon :attendance-app:assembleDebug :admin-app:assembleDebug
-
       - name: Verify and stage APKs
         shell: bash
         run: |
           set -euo pipefail
           attendance_apk="$(find android/attendance-app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
           admin_apk="$(find android/admin-app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
-          test -n "$attendance_apk" && test -s "$attendance_apk"
-          test -n "$admin_apk" && test -s "$admin_apk"
-          cp "$attendance_apk" Employee-Attendance-v1.4.apk
-          cp "$admin_apk" Attendance-Admin-v1.4.apk
-          ls -lh Employee-Attendance-v1.4.apk Attendance-Admin-v1.4.apk
-
+          test -s "$attendance_apk"
+          test -s "$admin_apk"
+          cp "$attendance_apk" Employee-Attendance-v1.5.apk
+          cp "$admin_apk" Attendance-Admin-v1.5.apk
+          ls -lh Employee-Attendance-v1.5.apk Attendance-Admin-v1.5.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: attendance-apks-v1.4
+          name: attendance-apks-v1.5
           if-no-files-found: error
           path: |
-            Employee-Attendance-v1.4.apk
-            Attendance-Admin-v1.4.apk
-
-      - name: Publish v1.4 release
+            Employee-Attendance-v1.5.apk
+            Attendance-Admin-v1.5.apk
+      - name: Publish v1.5 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if ! gh release view v1.4 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create v1.4 --target "$GITHUB_SHA" --title "v1.4" --notes "Attendance Admin control center and Employee attendance terminal" --repo "$GITHUB_REPOSITORY"
+          if ! gh release view v1.5 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v1.5 --target "$GITHUB_SHA" --title "v1.5" --notes "FaceNet attendance recognition, re-enrollment, longer device pairing and updated kiosk/admin apps" --repo "$GITHUB_REPOSITORY"
           fi
-
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.4" --jq '.id')"
-
-          for asset in Employee-Attendance-v1.4.apk Attendance-Admin-v1.4.apk; do
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.5" --jq '.id')"
+          for asset in Employee-Attendance-v1.5.apk Attendance-Admin-v1.5.apk; do
             asset_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate --jq ".[] | select(.name == \"$asset\") | .id" | head -n 1 || true)"
-            if [ -n "$asset_id" ]; then
-              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
-            fi
+            if [ -n "$asset_id" ]; then gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"; fi
           done
-
-          gh release edit v1.4 --target "$GITHUB_SHA" --title "v1.4" --repo "$GITHUB_REPOSITORY"
-          gh release upload v1.4 Employee-Attendance-v1.4.apk Attendance-Admin-v1.4.apk --repo "$GITHUB_REPOSITORY"
+          gh release edit v1.5 --target "$GITHUB_SHA" --title "v1.5" --repo "$GITHUB_REPOSITORY"
+          gh release upload v1.5 Employee-Attendance-v1.5.apk Attendance-Admin-v1.5.apk --repo "$GITHUB_REPOSITORY"
