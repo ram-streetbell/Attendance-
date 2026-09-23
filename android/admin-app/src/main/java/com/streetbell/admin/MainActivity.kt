@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
     @Composable private fun AdminHome(){
         var tab by remember{mutableStateOf("Dashboard")};var employees by remember{mutableStateOf(emptyList<Employee>())};var devices by remember{mutableStateOf(emptyList<Device>())};var events by remember{mutableStateOf(emptyList<Attendance>())};var message by remember{mutableStateOf("Loading…")};var refresh by remember{mutableStateOf(0)}
         LaunchedEffect(refresh){loadEmployees{employees=it};loadDevices{devices=it};loadAttendance{events=it;message="Synced"}}
-        Row(Modifier.fillMaxSize().padding(12.dp)){
+        Row(Modifier.fillMaxSize().padding(16.dp)){
             NavigationRail{listOf("Dashboard","Employees","Devices","Attendance").forEach{item->NavigationRailItem(selected=tab==item,onClick={tab=item},icon={Text(item.first().toString())},label={Text(item)})}}
             Column(Modifier.fillMaxSize().padding(20.dp)){Text("ATTEND",style=MaterialTheme.typography.headlineLarge);Text("Admin Console",style=MaterialTheme.typography.titleMedium);Spacer(Modifier.height(16.dp));when(tab){
                 "Dashboard"->Dashboard(employees,devices,events)
