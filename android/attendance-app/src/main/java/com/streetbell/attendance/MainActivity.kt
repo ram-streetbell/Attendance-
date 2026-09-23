@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.os.Bundle
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private var capture: ImageCapture? = null
     private var people = emptyList<Person>()
-    private var baseUrl = "https://attendance-backend-rkny.onrender.com"
+    private val baseUrl = "https://attendance-backend-rkny.onrender.com"
     private var deviceToken: String? = null
     private var busy = false
 
@@ -75,9 +76,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val prefs = getSharedPreferences("attendance", Context.MODE_PRIVATE)
-        baseUrl = prefs.getString("baseUrl", baseUrl) ?: baseUrl
-        deviceToken = prefs.getString("deviceToken", null)
+        deviceToken = getSharedPreferences("attendance", Context.MODE_PRIVATE).getString("deviceToken", null)
         val allowed = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         setUi(allowed)
         if (!allowed) permission.launch(Manifest.permission.CAMERA)
@@ -115,9 +114,7 @@ class MainActivity : ComponentActivity() {
             Text(message, modifier = Modifier.padding(8.dp))
             if (cameraEnabled) {
                 AndroidView(factory = { context -> PreviewView(context).also { startCamera(it) { d, p, s -> detected = d; person = p; score = s } } }, modifier = Modifier.fillMaxWidth().height(420.dp))
-            } else {
-                Text("Camera permission required", modifier = Modifier.padding(32.dp))
-            }
+            } else Text("Camera permission required", modifier = Modifier.padding(32.dp))
             Spacer(Modifier.height(12.dp))
             Text(when { person != null -> "${person!!.name} • ${(score * 100).toInt()}%"; detected -> "Unknown employee"; else -> "Stand in front of the camera" })
             Spacer(Modifier.height(12.dp))
@@ -132,23 +129,22 @@ class MainActivity : ComponentActivity() {
     private fun pair(code: String, done: (Boolean, String) -> Unit) = executor.execute {
         try {
             require(code.trim().length >= 4) { "Enter a valid pairing code" }
-            val body = JSONObject().put("pairingCode", code.trim()).put("deviceName", "Attendance Kiosk").put("appVersion", "1.2").toString().toRequestBody("application/json".toMediaType())
-            val request = Request.Builder().url("$baseUrl/api/v1/device/pair").post(body).build()
-            http.newCall(request).execute().use { response ->
+            val body = JSONObject().put("pairingCode", code.trim()).put("deviceName", "Attendance Kiosk").put("appVersion", "1.4.1").toString().toRequestBody("application/json".toMediaType())
+            http.newCall(Request.Builder().url("$baseUrl/api/v1/device/pair").post(body).build()).execute().use { response ->
                 if (!response.isSuccessful) error("Pairing failed (${response.code})")
                 deviceToken = JSONObject(response.body?.string() ?: error("Empty pairing response")).getString("deviceToken")
             }
-            getSharedPreferences("attendance", MODE_PRIVATE).edit().putString("baseUrl", baseUrl).putString("deviceToken", deviceToken).apply()
+            getSharedPreferences("attendance", MODE_PRIVATE).edit().putString("deviceToken", deviceToken).apply()
             runOnUiThread { done(true, "Device paired") }
         } catch (e: Exception) { runOnUiThread { done(false, e.message ?: "Pairing failed") } }
     }
 
     private fun refreshManifest(done: (String) -> Unit) = executor.execute {
         try {
-            val request = auth(Request.Builder().url("$baseUrl/api/v1/device/manifest").get())
-            http.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) error("Manifest error ${response.code}")
-                val employees = JSONObject(response.body?.string() ?: error("Empty manifest")).getJSONArray("employees")
+            val response = http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/manifest").get())).execute()
+            response.use {
+                if (!it.isSuccessful) error("Manifest error ${it.code}")
+                val employees = JSONObject(it.body?.string() ?: error("Empty manifest")).getJSONArray("employees")
                 val list = mutableListOf<Person>()
                 for (i in 0 until employees.length()) {
                     val e = employees.getJSONObject(i)
@@ -177,14 +173,24 @@ class MainActivity : ComponentActivity() {
                     last = System.currentTimeMillis()
                     val image = proxy.image
                     if (image == null) { proxy.close(); return@setAnalyzer }
-                    detector.process(InputImage.fromMediaImage(image, proxy.imageInfo.rotationDegrees)).addOnSuccessListener { faces ->
+                    val rotation = proxy.imageInfo.rotationDegrees
+                    detector.process(InputImage.fromMediaImage(image, rotation)).addOnSuccessListener { faces ->
                         val face = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
                         if (face == null) { onMatch(false, null, 0f); return@addOnSuccessListener }
-                        val template = FaceTemplate.from(yuvToBitmap(proxy), face.boundingBox)
+                        // ML Kit returns the face rectangle in the rotated InputImage coordinate system.
+                        // Rotate the camera bitmap by the same amount before cropping, otherwise the
+                        // rectangle is applied to the wrong axes and every employee becomes unknown.
+                        val bitmap = yuvToBitmap(proxy, rotation)
+                        val template = FaceTemplate.from(bitmap, face.boundingBox)
                         var best: Person? = null
                         var bestScore = 0f
-                        if (template != null) people.forEach { p -> val s = FaceTemplate.similarity(template, p.template); if (s > bestScore) { bestScore = s; best = p } }
-                        onMatch(true, if (bestScore >= 0.82f) best else null, bestScore)
+                        if (template != null) {
+                            people.forEach { p ->
+                                val s = FaceTemplate.similarity(template, p.template)
+                                if (s > bestScore) { bestScore = s; best = p }
+                            }
+                        }
+                        onMatch(true, if (bestScore >= 0.68f) best else null, bestScore)
                     }.addOnCompleteListener { proxy.close() }
                 }
                 provider.unbindAll()
@@ -199,8 +205,7 @@ class MainActivity : ComponentActivity() {
         val imageCapture = capture ?: run { busy = false; done("Camera is not ready"); return }
         executor.execute {
             val file = File.createTempFile("attendance_", ".jpg", cacheDir)
-            val output = ImageCapture.OutputFileOptions.Builder(file).build()
-            imageCapture.takePicture(output, executor, object : ImageCapture.OnImageSavedCallback {
+            imageCapture.takePicture(ImageCapture.OutputFileOptions.Builder(file).build(), executor, object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exception: ImageCaptureException) { busy = false; runOnUiThread { done("Photo capture failed") } }
                 override fun onImageSaved(result: ImageCapture.OutputFileResults) {
                     try {
@@ -219,24 +224,13 @@ class MainActivity : ComponentActivity() {
                             if (!r.isSuccessful) error("Photo upload failed")
                             JSONObject(r.body?.string() ?: error("Empty upload response"))
                         }
-                        val event = JSONObject()
-                            .put("clientEventId", UUID.randomUUID().toString())
-                            .put("employeeId", employeeId)
-                            .put("status", kind)
-                            .put("capturedAt", Instant.now().toString())
-                            .put("faceMatchScore", score)
-                            .put("cloudinaryPublicId", cloud.optString("public_id"))
-                            .put("cloudinaryAssetId", cloud.optString("asset_id"))
-                            .put("photoSecureUrl", cloud.optString("secure_url"))
+                        val event = JSONObject().put("clientEventId", UUID.randomUUID().toString()).put("employeeId", employeeId).put("status", kind).put("capturedAt", Instant.now().toString()).put("faceMatchScore", score).put("cloudinaryPublicId", cloud.optString("public_id")).put("cloudinaryAssetId", cloud.optString("asset_id")).put("photoSecureUrl", cloud.optString("secure_url"))
                         http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance").post(event.toString().toRequestBody("application/json".toMediaType())))).execute().use { r ->
                             if (!r.isSuccessful) error(if (r.code == 409) "Same status was already recorded recently" else "Attendance submission failed (${r.code})")
                         }
                         file.delete(); busy = false
                         runOnUiThread { done("Attendance recorded: $kind") }
-                    } catch (e: Exception) {
-                        file.delete(); busy = false
-                        runOnUiThread { done(e.message ?: "Attendance failed") }
-                    }
+                    } catch (e: Exception) { file.delete(); busy = false; runOnUiThread { done(e.message ?: "Attendance failed") } }
                 }
             })
         }
@@ -246,39 +240,44 @@ class MainActivity : ComponentActivity() {
 
     private object FaceTemplate {
         fun from(source: Bitmap, box: Rect): FloatArray? {
-            val p = (box.width() * .18f).toInt()
-            val l = (box.left - p).coerceAtLeast(0)
-            val t = (box.top - p).coerceAtLeast(0)
-            val r = (box.right + p).coerceAtMost(source.width)
-            val b = (box.bottom + p).coerceAtMost(source.height)
-            if (r <= l || b <= t) return null
-            val small = Bitmap.createScaledBitmap(Bitmap.createBitmap(source, l, t, r - l, b - t), 32, 32, true)
+            val p = (box.width() * .22f).toInt()
+            val l = (box.left - p).coerceIn(0, source.width - 1)
+            val t = (box.top - p).coerceIn(0, source.height - 1)
+            val r = (box.right + p).coerceIn(l + 1, source.width)
+            val b = (box.bottom + p).coerceIn(t + 1, source.height)
+            val crop = Bitmap.createBitmap(source, l, t, r - l, b - t)
+            val small = Bitmap.createScaledBitmap(crop, 32, 32, true)
             val v = FloatArray(1024)
-            var i = 0
             var mean = 0f
+            var i = 0
             for (y in 0 until 32) for (x in 0 until 32) {
                 val px = small.getPixel(x, y)
                 val q = (.299f * ((px shr 16) and 255) + .587f * ((px shr 8) and 255) + .114f * (px and 255)) / 255f
-                v[i++] = q; mean += q
+                v[i++] = q
+                mean += q
             }
             mean /= 1024f
-            var n = 0f
-            for (j in v.indices) { v[j] -= mean; n += v[j] * v[j] }
-            n = sqrt(n).coerceAtLeast(.0001f)
-            for (j in v.indices) v[j] /= n
+            var norm = 0f
+            for (j in v.indices) { v[j] -= mean; norm += v[j] * v[j] }
+            norm = sqrt(norm).coerceAtLeast(.0001f)
+            for (j in v.indices) v[j] /= norm
             return v
         }
+
         fun similarity(a: FloatArray, b: FloatArray): Float {
-            var d = 0f
-            for (i in 0 until minOf(a.size, b.size)) d += a[i] * b[i]
-            return ((d + 1f) / 2f).coerceIn(0f, 1f)
+            var dot = 0f
+            for (i in 0 until minOf(a.size, b.size)) dot += a[i] * b[i]
+            return ((dot + 1f) / 2f).coerceIn(0f, 1f)
         }
     }
 
-    private fun yuvToBitmap(proxy: ImageProxy): Bitmap {
-        val y = proxy.planes[0].buffer
-        val u = proxy.planes[1].buffer
-        val v = proxy.planes[2].buffer
+    private fun yuvToBitmap(proxy: ImageProxy, rotation: Int): Bitmap {
+        val yPlane = proxy.planes[0]
+        val uPlane = proxy.planes[1]
+        val vPlane = proxy.planes[2]
+        val y = yPlane.buffer.duplicate()
+        val u = uPlane.buffer.duplicate()
+        val v = vPlane.buffer.duplicate()
         val yb = ByteArray(y.remaining()).also { y.get(it) }
         val ub = ByteArray(u.remaining()).also { u.get(it) }
         val vb = ByteArray(v.remaining()).also { v.get(it) }
@@ -287,16 +286,16 @@ class MainActivity : ComponentActivity() {
         val nv21 = ByteArray(w * h + w * h / 2)
         System.arraycopy(yb, 0, nv21, 0, minOf(yb.size, w * h))
         var pos = w * h
-        val up = proxy.planes[1]
-        val vp = proxy.planes[2]
         for (row in 0 until h / 2) for (col in 0 until w / 2) {
-            val ui = row * up.rowStride + col * up.pixelStride
-            val vi = row * vp.rowStride + col * vp.pixelStride
+            val ui = row * uPlane.rowStride + col * uPlane.pixelStride
+            val vi = row * vPlane.rowStride + col * vPlane.pixelStride
             if (ui < ub.size && vi < vb.size && pos + 1 < nv21.size) { nv21[pos++] = vb[vi]; nv21[pos++] = ub[ui] }
         }
         val out = ByteArrayOutputStream()
-        YuvImage(nv21, ImageFormat.NV21, w, h, null).compressToJpeg(Rect(0, 0, w, h), 70, out)
-        val bytes = out.toByteArray()
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: error("Unable to decode camera frame")
+        YuvImage(nv21, ImageFormat.NV21, w, h, null).compressToJpeg(Rect(0, 0, w, h), 80, out)
+        val raw = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size()) ?: error("Unable to decode camera frame")
+        if (rotation == 0) return raw
+        val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+        return Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
     }
 }
