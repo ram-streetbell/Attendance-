@@ -102,8 +102,7 @@ class MainActivity : ComponentActivity() {
     private fun App(cameraEnabled: Boolean) {
         var paired by remember { mutableStateOf(deviceToken != null) }
         var code by remember { mutableStateOf("") }
-        var url by remember { mutableStateOf(baseUrl) }
-        var message by remember {
+                var message by remember {
             mutableStateOf(if (paired) "Loading employees..." else "Pair this attendance device")
         }
         var face by remember { mutableStateOf<Person?>(null) }
@@ -126,13 +125,6 @@ class MainActivity : ComponentActivity() {
                 Text("Attendance Device", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(18.dp))
                 OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text("Backend URL") },
-                    singleLine = true
-                )
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
                     value = code,
                     onValueChange = { code = it.uppercase() },
                     label = { Text("Pairing code") },
@@ -141,7 +133,6 @@ class MainActivity : ComponentActivity() {
                 Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = {
-                        baseUrl = url.trimEnd('/')
                         pair(code) { ok, msg ->
                             message = msg
                             if (ok) paired = true

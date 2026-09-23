@@ -55,21 +55,19 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun App() {
         var logged by remember { mutableStateOf(token != null) }
-        var url by remember { mutableStateOf(baseUrl) }
-        var email by remember { mutableStateOf("") }
+                var email by remember { mutableStateOf("") }
         var pass by remember { mutableStateOf("") }
         var message by remember { mutableStateOf("") }
 
         if (!logged) {
             Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Text("Attendance Admin", style = MaterialTheme.typography.headlineMedium)
+                Text("ATTEND", style = MaterialTheme.typography.headlineLarge)
+                Text("Admin Console", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(20.dp))
-                OutlinedTextField(url, { url = it }, label = { Text("Backend URL") }, singleLine = true)
                 OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true)
                 OutlinedTextField(pass, { pass = it }, label = { Text("Password") }, singleLine = true)
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = {
-                    baseUrl = url.trimEnd('/')
                     login(email, pass) { ok, msg -> message = msg; if (ok) logged = true }
                 }) { Text("LOGIN") }
                 Text(message)
@@ -89,14 +87,15 @@ class MainActivity : ComponentActivity() {
             loadDevices { devices = it }
             loadAttendance { events = it; message = "Updated" }
         }
-        Row(Modifier.fillMaxSize().padding(12.dp)) {
+        Row(Modifier.fillMaxSize().padding(16.dp)) {
             NavigationRail {
                 listOf("Dashboard", "Employees", "Devices", "Attendance").forEach { item ->
                     NavigationRailItem(selected = tab == item, onClick = { tab = item }, icon = { Text(item.take(1)) }, label = { Text(item) })
                 }
             }
             Column(Modifier.fillMaxSize().padding(18.dp)) {
-                Text("Attendance Admin", style = MaterialTheme.typography.headlineMedium)
+                Text("ATTEND", style = MaterialTheme.typography.headlineLarge)
+                Text("Admin Console", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
                 when (tab) {
                     "Dashboard" -> Dashboard(employees, devices, events)
