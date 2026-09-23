@@ -1,4 +1,4 @@
-name: Build and Release v1.5
+name: Build and Release v1.6
 
 on:
   push:
@@ -42,30 +42,30 @@ jobs:
           admin_apk="$(find android/admin-app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
           test -s "$attendance_apk"
           test -s "$admin_apk"
-          cp "$attendance_apk" Employee-Attendance-v1.5.apk
-          cp "$admin_apk" Attendance-Admin-v1.5.apk
-          ls -lh Employee-Attendance-v1.5.apk Attendance-Admin-v1.5.apk
+          cp "$attendance_apk" Employee-Attendance-v1.6.apk
+          cp "$admin_apk" Attendance-Admin-v1.6.apk
+          ls -lh Employee-Attendance-v1.6.apk Attendance-Admin-v1.6.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: attendance-apks-v1.5
+          name: attendance-apks-v1.6
           if-no-files-found: error
           path: |
-            Employee-Attendance-v1.5.apk
-            Attendance-Admin-v1.5.apk
-      - name: Publish v1.5 release
+            Employee-Attendance-v1.6.apk
+            Attendance-Admin-v1.6.apk
+      - name: Publish v1.6 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if ! gh release view v1.5 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create v1.5 --target "$GITHUB_SHA" --title "v1.5" --notes "FaceNet attendance recognition, re-enrollment, longer device pairing and updated kiosk/admin apps" --repo "$GITHUB_REPOSITORY"
+          if ! gh release view v1.6 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v1.6 --target "$GITHUB_SHA" --title "v1.6" --notes "Complete employee/device management, face enrollment, assignment, photo viewing, device removal and employee removal" --repo "$GITHUB_REPOSITORY"
           fi
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.5" --jq '.id')"
-          for asset in Employee-Attendance-v1.5.apk Attendance-Admin-v1.5.apk; do
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.6" --jq '.id')"
+          for asset in Employee-Attendance-v1.6.apk Attendance-Admin-v1.6.apk; do
             asset_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate --jq ".[] | select(.name == \"$asset\") | .id" | head -n 1 || true)"
             if [ -n "$asset_id" ]; then gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"; fi
           done
-          gh release edit v1.5 --target "$GITHUB_SHA" --title "v1.5" --repo "$GITHUB_REPOSITORY"
-          gh release upload v1.5 Employee-Attendance-v1.5.apk Attendance-Admin-v1.5.apk --repo "$GITHUB_REPOSITORY"
+          gh release edit v1.6 --target "$GITHUB_SHA" --title "v1.6" --repo "$GITHUB_REPOSITORY"
+          gh release upload v1.6 Employee-Attendance-v1.6.apk Attendance-Admin-v1.6.apk --repo "$GITHUB_REPOSITORY"
