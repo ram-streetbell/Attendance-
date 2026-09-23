@@ -1,10 +1,13 @@
 name: Polish Android Apps
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   polish:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,35 +17,24 @@ jobs:
           from pathlib import Path
           p=Path('android/attendance-app/src/main/java/com/streetbell/attendance/MainActivity.kt')
           s=p.read_text()
-          s=s.replace('import androidx.compose.material3.Text\n','import androidx.compose.material3.Text\nimport androidx.compose.material3.AssistChip\nimport androidx.compose.material3.Card\nimport androidx.compose.material3.OutlinedButton\nimport androidx.compose.ui.graphics.Color\n')
           s=s.replace('var url by remember { mutableStateOf(baseUrl) }\n','')
           s=s.replace('''                OutlinedTextField(\n                    value = url,\n                    onValueChange = { url = it },\n                    label = { Text("Backend URL") },\n                    singleLine = true\n                )\n                Spacer(Modifier.height(10.dp))\n''','')
           s=s.replace('''                        baseUrl = url.trimEnd('/')\n                        pair(code) { ok, msg ->''','''                        pair(code) { ok, msg ->''')
-          s=s.replace('''            Column(\n                modifier = Modifier.fillMaxSize().padding(16.dp),\n                horizontalAlignment = Alignment.CenterHorizontally\n            ) {\n                Text("Attendance", style = MaterialTheme.typography.headlineMedium)\n                Text(message, modifier = Modifier.padding(8.dp))''','''            Column(\n                modifier = Modifier.fillMaxSize().padding(18.dp),\n                horizontalAlignment = Alignment.CenterHorizontally\n            ) {\n                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {\n                    Column { Text("Attendance", style = MaterialTheme.typography.headlineMedium); Text("Secure check-in terminal", style = MaterialTheme.typography.bodyMedium) }\n                    AssistChip(onClick = {}, label = { Text("Online") })\n                }\n                Text(message, modifier = Modifier.padding(10.dp))''')
-          s=s.replace('''            Row(\n                modifier = Modifier.fillMaxWidth(),\n                horizontalArrangement = Arrangement.spacedBy(12.dp)\n            ) {''','''            Card(Modifier.fillMaxWidth()) {\n            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {''')
-          s=s.replace('''                Button(\n                    enabled = face != null && !busy,''','''                Button(\n                    enabled = face != null && !busy,''',1)
-          s=s.replace('''                }\n            }\n\n            status?.let {''','''                }\n            }\n            }\n\n            status?.let {''',1)
           p.write_text(s)
-
           p=Path('android/admin-app/src/main/java/com/streetbell/admin/MainActivity.kt')
           s=p.read_text()
-          s=s.replace('''                Text("Attendance Admin", style = MaterialTheme.typography.headlineMedium)\n                Spacer(Modifier.height(20.dp))\n                OutlinedTextField(url, { url = it }, label = { Text("Backend URL") }, singleLine = true)\n                OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true)''','''                Text("ATTEND", style = MaterialTheme.typography.headlineLarge)\n                Text("Admin Console", style = MaterialTheme.typography.titleMedium)\n                Spacer(Modifier.height(24.dp))\n                OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true)''')
+          s=s.replace('var url by remember { mutableStateOf(baseUrl) }\n','')
+          s=s.replace('''                OutlinedTextField(url, { url = it }, label = { Text("Backend URL") }, singleLine = true)\n''','')
           s=s.replace('''                    baseUrl = url.trimEnd('/')\n                    login(email, pass)''','''                    login(email, pass)''')
-          s=s.replace('''        Row(Modifier.fillMaxSize().padding(12.dp)) {''','''        Row(Modifier.fillMaxSize().padding(16.dp)) {''')
-          s=s.replace('''                Text("Attendance Admin", style = MaterialTheme.typography.headlineMedium)''','''                Text("Admin Console", style = MaterialTheme.typography.headlineMedium)\n                Text("Manage attendance, employees and devices", style = MaterialTheme.typography.bodyMedium)''')
+          s=s.replace('Text("Attendance Admin", style = MaterialTheme.typography.headlineMedium)','Text("ATTEND", style = MaterialTheme.typography.headlineLarge)\n                Text("Admin Console", style = MaterialTheme.typography.titleMedium)')
+          s=s.replace('Row(Modifier.fillMaxSize().padding(12.dp))','Row(Modifier.fillMaxSize().padding(16.dp))')
           p.write_text(s)
           PY
-
-          mkdir -p android/attendance-app/src/main/res/drawable android/attendance-app/src/main/res/mipmap-anydpi-v26 android/attendance-app/src/main/res/values
-          mkdir -p android/admin-app/src/main/res/drawable android/admin-app/src/main/res/mipmap-anydpi-v26 android/admin-app/src/main/res/values
-          cat > android/attendance-app/src/main/res/drawable/ic_attendance.xml <<'EOF'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><path android:fillColor="#315DFF" android:pathData="M54,8A46,46 0,1 0,54 100A46,46 0,1 0,54 8M54,27A15,15 0,1 1,54 57A15,15 0,1 1,54 27M27,82C31,65 77,65 81,82Z"/></vector>
-          EOF
-          cat > android/admin-app/src/main/res/drawable/ic_attendance.xml <<'EOF'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><path android:fillColor="#315DFF" android:pathData="M54,8A46,46 0,1 0,54 100A46,46 0,1 0,54 8M54,27A15,15 0,1 1,54 57A15,15 0,1 1,54 27M27,82C31,65 77,65 81,82Z"/></vector>
-          EOF
+          mkdir -p android/attendance-app/src/main/res/drawable android/attendance-app/src/main/res/mipmap-anydpi-v26 android/admin-app/src/main/res/drawable android/admin-app/src/main/res/mipmap-anydpi-v26
           for app in attendance-app admin-app; do
-            mkdir -p android/$app/src/main/res/mipmap-anydpi-v26
+            cat > android/$app/src/main/res/drawable/ic_attendance.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><path android:fillColor="#315DFF" android:pathData="M54,8A46,46 0,1 0,54 100A46,46 0,1 0,54 8M54,27A15,15 0,1 1,54 57A15,15 0,1 1,54 27M27,82C31,65 77,65 81,82Z"/></vector>
+          EOF
             cat > android/$app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@android:color/white"/><foreground android:drawable="@drawable/ic_attendance"/><monochrome android:drawable="@drawable/ic_attendance"/></adaptive-icon>
           EOF
@@ -50,14 +42,10 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           for app,label in [('attendance-app','Attendance'),('admin-app','Attendance Admin')]:
-            p=Path(f'android/{app}/src/main/AndroidManifest.xml')
-            s=p.read_text().replace('android:label="Attendance Kiosk"','android:label="Attendance"').replace('android:label="Attendance Admin"','android:label="Attendance Admin"')
-            s=s.replace('<application ', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" ')
-            s=s.replace(' android:usesCleartextTraffic="true"','')
-            p.write_text(s)
+            p=Path(f'android/{app}/src/main/AndroidManifest.xml');s=p.read_text();s=s.replace('android:label="Attendance Kiosk"','android:label="Attendance"');s=s.replace('<application ','<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" ');s=s.replace(' android:usesCleartextTraffic="true"','');p.write_text(s)
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add android .github/workflows/polish-ui.yml
-          git commit -m "Polish Android UI, icons and production configuration" || true
+          git add android
+          git commit -m "Polish Android UI and add app branding" || true
           git push
