@@ -21,6 +21,16 @@ jobs:
           java-version: '17'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Download FaceNet model
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://raw.githubusercontent.com/shubham0204/FaceRecognition_With_FaceNet_Android/master/app/src/main/assets/facenet.tflite"
+          for app in attendance-app admin-app; do
+            mkdir -p "android/$app/src/main/assets"
+            curl --fail --location --retry 3 --output "android/$app/src/main/assets/facenet.tflite" "$url"
+            test "$(stat -c%s "android/$app/src/main/assets/facenet.tflite")" -gt 1000000
+          done
       - name: Build Android APKs
         working-directory: android
         run: gradle --no-daemon :attendance-app:assembleDebug :admin-app:assembleDebug
