@@ -4,22 +4,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val faceNetUrl = "https://raw.githubusercontent.com/shubham0204/FaceRecognition_With_FaceNet_Android/master/app/src/main/assets/facenet.tflite"
-val faceNetFile = layout.projectDirectory.dir("src/main/assets").file("facenet.tflite").asFile
-val downloadFaceNet = tasks.register("downloadFaceNet") {
-    outputs.file(faceNetFile)
-    doLast {
-        if (!faceNetFile.exists() || faceNetFile.length() < 1_000_000L) {
-            faceNetFile.parentFile.mkdirs()
-            java.net.URL(faceNetUrl).openStream().use { input ->
-                faceNetFile.outputStream().use { output -> input.copyTo(output) }
-            }
-        }
-        check(faceNetFile.length() > 1_000_000L) { "FaceNet model download failed" }
-    }
-}
-tasks.named("preBuild") { dependsOn(downloadFaceNet) }
-
 android {
     namespace = "com.streetbell.admin"
     compileSdk = 35
