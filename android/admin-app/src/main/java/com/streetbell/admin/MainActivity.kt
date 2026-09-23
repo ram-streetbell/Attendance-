@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -135,38 +136,23 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable private fun StatCard(title: String, value: String) {
-        Card(Modifier.widthIn(min = 110.dp)) {
-            Column(Modifier.padding(18.dp)) { Text(title); Text(value, style = MaterialTheme.typography.headlineMedium) }
-        }
+        Card(Modifier.widthIn(min = 110.dp)) { Column(Modifier.padding(18.dp)) { Text(title); Text(value, style = MaterialTheme.typography.headlineMedium) } }
     }
 
     @Composable private fun Employees(list: List<Employee>, message: String, reload: () -> Unit) {
         var open by remember { mutableStateOf(false) }
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Employees", style = MaterialTheme.typography.headlineSmall)
-                Button(onClick = { open = true }) { Text("+ ADD EMPLOYEE") }
-            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("Employees", style = MaterialTheme.typography.headlineSmall); Button(onClick = { open = true }) { Text("+ ADD EMPLOYEE") } }
             Text("${list.size} registered employees")
             Spacer(Modifier.height(8.dp))
-            LazyColumn {
-                items(list) { e ->
-                    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        Column(Modifier.padding(14.dp)) { Text(e.name, style = MaterialTheme.typography.titleMedium); Text(e.code + if (e.department.isNullOrBlank()) "" else " • ${e.department}") }
-                    }
-                }
-            }
+            LazyColumn { items(list) { e -> Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Column(Modifier.padding(14.dp)) { Text(e.name, style = MaterialTheme.typography.titleMedium); Text(e.code + if (e.department.isNullOrBlank()) "" else " • ${e.department}") } } } }
             Text(message)
         }
         if (open) AddEmployeeDialog({ open = false }, reload)
     }
 
     @Composable private fun AddEmployeeDialog(close: () -> Unit, reload: () -> Unit) {
-        var code by remember { mutableStateOf("") }
-        var name by remember { mutableStateOf("") }
-        var dept by remember { mutableStateOf("") }
-        var status by remember { mutableStateOf("") }
-        var selected by remember { mutableStateOf<Uri?>(null) }
+        var code by remember { mutableStateOf("") }; var name by remember { mutableStateOf("") }; var dept by remember { mutableStateOf("") }; var status by remember { mutableStateOf("") }; var selected by remember { mutableStateOf<Uri?>(null) }
         photoChanged = { selected = selectedPhoto }
         AlertDialog(onDismissRequest = close, title = { Text("Add employee") }, text = {
             Column {
@@ -177,38 +163,16 @@ class MainActivity : ComponentActivity() {
                 OutlinedButton(onClick = { picker.launch("image/*") }) { Text(if (selected == null) "Choose face photo" else "Face photo selected") }
                 if (status.isNotBlank()) Text(status)
             }
-        }, confirmButton = {
-            Button(enabled = code.isNotBlank() && name.isNotBlank() && selected != null, onClick = {
-                status = "Creating…"
-                createEmployee(code.trim(), name.trim(), dept.trim(), selected!!) { status = "Employee added"; selectedPhoto = null; reload(); close() }
-            }) { Text("ADD") }
-        }, dismissButton = { TextButton(onClick = close) { Text("CANCEL") } })
+        }, confirmButton = { Button(enabled = code.isNotBlank() && name.isNotBlank() && selected != null, onClick = { status = "Creating…"; createEmployee(code.trim(), name.trim(), dept.trim(), selected!!) { status = "Employee added"; selectedPhoto = null; reload(); close() } }) { Text("ADD") } }, dismissButton = { TextButton(onClick = close) { Text("CANCEL") } })
     }
 
     @Composable private fun Devices(list: List<Device>, employees: List<Employee>, message: String, reload: () -> Unit) {
-        var createOpen by remember { mutableStateOf(false) }
-        var assignDevice by remember { mutableStateOf<Device?>(null) }
+        var createOpen by remember { mutableStateOf(false) }; var assignDevice by remember { mutableStateOf<Device?>(null) }
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Devices", style = MaterialTheme.typography.headlineSmall)
-                Button(onClick = { createOpen = true }) { Text("+ ADD DEVICE") }
-            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("Devices", style = MaterialTheme.typography.headlineSmall); Button(onClick = { createOpen = true }) { Text("+ ADD DEVICE") } }
             Text("Create a kiosk, then use its pairing code in the Employee Attendance app.")
             Spacer(Modifier.height(8.dp))
-            LazyColumn {
-                items(list) { d ->
-                    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        Column(Modifier.padding(14.dp)) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column { Text(d.name, style = MaterialTheme.typography.titleMedium); Text("${d.status.uppercase()} • ${d.id.take(8)}") }
-                                Button(onClick = { assignDevice = d }) { Text("ASSIGN EMPLOYEES") }
-                            }
-                            if (!d.pairingCode.isNullOrBlank()) { Text("PAIRING CODE", style = MaterialTheme.typography.labelMedium); Text(d.pairingCode, style = MaterialTheme.typography.headlineSmall) }
-                            if (!d.lastSeen.isNullOrBlank()) Text("Last seen: ${d.lastSeen}")
-                        }
-                    }
-                }
-            }
+            LazyColumn { items(list) { d -> Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Column(Modifier.padding(14.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Column { Text(d.name, style = MaterialTheme.typography.titleMedium); Text("${d.status.uppercase()} • ${d.id.take(8)}") }; Button(onClick = { assignDevice = d }) { Text("ASSIGN EMPLOYEES") } }; if (!d.pairingCode.isNullOrBlank()) { Text("PAIRING CODE", style = MaterialTheme.typography.labelMedium); Text(d.pairingCode, style = MaterialTheme.typography.headlineSmall) }; if (!d.lastSeen.isNullOrBlank()) Text("Last seen: ${d.lastSeen}") } } } }
             Text(message)
         }
         if (createOpen) CreateDeviceDialog({ createOpen = false }, reload)
@@ -216,106 +180,32 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable private fun CreateDeviceDialog(close: () -> Unit, reload: () -> Unit) {
-        var name by remember { mutableStateOf("") }
-        var result by remember { mutableStateOf("") }
-        AlertDialog(onDismissRequest = close, title = { Text("Add attendance device") }, text = {
-            Column { Text("Give this kiosk a name."); OutlinedTextField(name, { name = it }, label = { Text("Device name") }); if (result.isNotBlank()) Text(result) }
-        }, confirmButton = { Button(enabled = name.isNotBlank(), onClick = { result = "Creating…"; createDevice(name.trim()) { code -> result = "Pairing code: $code"; reload() } }) { Text("CREATE") } }, dismissButton = { TextButton(onClick = close) { Text("CLOSE") } })
+        var name by remember { mutableStateOf("") }; var result by remember { mutableStateOf("") }
+        AlertDialog(onDismissRequest = close, title = { Text("Add attendance device") }, text = { Column { Text("Give this kiosk a name."); OutlinedTextField(name, { name = it }, label = { Text("Device name") }); if (result.isNotBlank()) Text(result) } }, confirmButton = { Button(enabled = name.isNotBlank(), onClick = { result = "Creating…"; createDevice(name.trim()) { code -> result = "Pairing code: $code"; reload() } }) { Text("CREATE") } }, dismissButton = { TextButton(onClick = close) { Text("CLOSE") } })
     }
 
     @Composable private fun AssignDialog(device: Device, employees: List<Employee>, close: () -> Unit, reload: () -> Unit) {
-        var selected by remember { mutableStateOf(setOf<String>()) }
-        var status by remember { mutableStateOf("") }
-        AlertDialog(onDismissRequest = close, title = { Text("Assign to ${device.name}") }, text = {
-            Column {
-                Text("Select employees allowed to use this kiosk.")
-                LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                    items(employees) { e ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = selected.contains(e.id), onCheckedChange = { checked -> selected = if (checked) selected + e.id else selected - e.id })
-                            Text("${e.name} • ${e.code}")
-                        }
-                    }
-                }
-                if (status.isNotBlank()) Text(status)
-            }
-        }, confirmButton = { Button(onClick = { status = "Saving…"; assign(device.id, selected.toList()) { status = "Saved"; reload(); close() } }) { Text("SAVE ASSIGNMENT") } }, dismissButton = { TextButton(onClick = close) { Text("CANCEL") } })
+        var selected by remember { mutableStateOf(setOf<String>()) }; var status by remember { mutableStateOf("") }
+        AlertDialog(onDismissRequest = close, title = { Text("Assign to ${device.name}") }, text = { Column { Text("Select employees allowed to use this kiosk."); LazyColumn(Modifier.heightIn(max = 360.dp)) { items(employees) { e -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = selected.contains(e.id), onCheckedChange = { checked -> selected = if (checked) selected + e.id else selected - e.id }); Text("${e.name} • ${e.code}") } } }; if (status.isNotBlank()) Text(status) } }, confirmButton = { Button(onClick = { status = "Saving…"; assign(device.id, selected.toList()) { status = "Saved"; reload(); close() } }) { Text("SAVE ASSIGNMENT") } }, dismissButton = { TextButton(onClick = close) { Text("CANCEL") } })
     }
 
     @Composable private fun AttendanceList(list: List<Attendance>, message: String, reload: () -> Unit) {
-        Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Attendance", style = MaterialTheme.typography.headlineSmall); Button(onClick = reload) { Text("REFRESH") } }
-            Spacer(Modifier.height(8.dp))
-            LazyColumn {
-                items(list) { a ->
-                    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Column(Modifier.padding(14.dp)) { Text("${a.employee} • ${a.status}", style = MaterialTheme.typography.titleMedium); Text("${a.time} • ${a.device}"); if (!a.photo.isNullOrBlank()) Text("Photo: ${a.photo}") } }
-                }
-            }
-            Text(message)
-        }
+        Column(Modifier.fillMaxSize()) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Attendance", style = MaterialTheme.typography.headlineSmall); Button(onClick = reload) { Text("REFRESH") } }; Spacer(Modifier.height(8.dp)); LazyColumn { items(list) { a -> Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Column(Modifier.padding(14.dp)) { Text("${a.employee} • ${a.status}", style = MaterialTheme.typography.titleMedium); Text("${a.time} • ${a.device}"); if (!a.photo.isNullOrBlank()) Text("Photo: ${a.photo}") } } } }; Text(message) }
     }
 
     private fun login(email: String, password: String, done: (Boolean, String) -> Unit) = executor.submit {
-        try {
-            val body = JSONObject().put("email", email).put("password", password).toString().toRequestBody("application/json".toMediaType())
-            http.newCall(Request.Builder().url("$baseUrl/api/v1/admin/login").post(body).build()).execute().use { r ->
-                if (!r.isSuccessful) error("Login failed (${r.code})")
-                token = JSONObject(r.body?.string() ?: error("Empty response")).getString("token")
-            }
-            getSharedPreferences("admin", 0).edit().putString("token", token).apply()
-            runOnUiThread { done(true, "Logged in") }
-        } catch (e: Exception) { runOnUiThread { done(false, e.message ?: "Login failed") } }
+        try { val body = JSONObject().put("email", email).put("password", password).toString().toRequestBody("application/json".toMediaType()); http.newCall(Request.Builder().url("$baseUrl/api/v1/admin/login").post(body).build()).execute().use { r -> if (!r.isSuccessful) error("Login failed (${r.code})"); token = JSONObject(r.body?.string() ?: error("Empty response")).getString("token") }; getSharedPreferences("admin", 0).edit().putString("token", token).apply(); runOnUiThread { done(true, "Logged in") } } catch (e: Exception) { runOnUiThread { done(false, e.message ?: "Login failed") } }
     }
 
-    private fun loadEmployees(done: (List<Employee>) -> Unit) = executor.submit {
-        try {
-            val a = JSONObject(call("/api/v1/admin/employees")).getJSONArray("items")
-            val out = List(a.length()) { i -> val e = a.getJSONObject(i); Employee(e.getString("id"), e.getString("employee_code"), e.getString("name"), e.optString("department").ifBlank { null }) }
-            runOnUiThread { done(out) }
-        } catch (_: Exception) { }
-    }
+    private fun loadEmployees(done: (List<Employee>) -> Unit) = executor.submit { try { val a = JSONObject(call("/api/v1/admin/employees")).getJSONArray("items"); val out = List(a.length()) { i -> val e = a.getJSONObject(i); Employee(e.getString("id"), e.getString("employee_code"), e.getString("name"), e.optString("department").ifBlank { null }) }; runOnUiThread { done(out) } } catch (_: Exception) {} }
+    private fun loadDevices(done: (List<Device>) -> Unit) = executor.submit { try { val a = JSONObject(call("/api/v1/admin/devices")).getJSONArray("items"); val out = List(a.length()) { i -> val e = a.getJSONObject(i); Device(e.getString("id"), e.getString("name"), e.getString("status"), if (e.isNull("pairing_code")) null else e.getString("pairing_code"), e.optString("last_seen_at").ifBlank { null }) }; runOnUiThread { done(out) } } catch (_: Exception) {} }
+    private fun loadAttendance(done: (List<Attendance>) -> Unit) = executor.submit { try { val a = JSONObject(call("/api/v1/admin/attendance")).getJSONArray("items"); val out = List(a.length()) { i -> val e = a.getJSONObject(i); Attendance(e.getString("employee_name"), e.getString("status"), e.getString("captured_at"), e.getString("device_name"), e.optString("photo_secure_url").ifBlank { null }) }; runOnUiThread { done(out) } } catch (_: Exception) {} }
 
-    private fun loadDevices(done: (List<Device>) -> Unit) = executor.submit {
-        try {
-            val a = JSONObject(call("/api/v1/admin/devices")).getJSONArray("items")
-            val out = List(a.length()) { i -> val e = a.getJSONObject(i); Device(e.getString("id"), e.getString("name"), e.getString("status"), if (e.isNull("pairing_code")) null else e.getString("pairing_code"), e.optString("last_seen_at").ifBlank { null }) }
-            runOnUiThread { done(out) }
-        } catch (_: Exception) { }
-    }
+    private fun call(path: String): String { val r = http.newCall(Request.Builder().url(baseUrl + path).header("Authorization", "Bearer $token").get().build()).execute(); if (!r.isSuccessful) throw Exception("Request failed ${r.code}"); return r.body?.string() ?: "{}" }
 
-    private fun loadAttendance(done: (List<Attendance>) -> Unit) = executor.submit {
-        try {
-            val a = JSONObject(call("/api/v1/admin/attendance")).getJSONArray("items")
-            val out = List(a.length()) { i -> val e = a.getJSONObject(i); Attendance(e.getString("employee_name"), e.getString("status"), e.getString("captured_at"), e.getString("device_name"), e.optString("photo_secure_url").ifBlank { null }) }
-            runOnUiThread { done(out) }
-        } catch (_: Exception) { }
-    }
+    private fun createDevice(name: String, done: (String) -> Unit) = executor.submit { try { val body = JSONObject().put("name", name).toString().toRequestBody("application/json".toMediaType()); http.newCall(Request.Builder().url("$baseUrl/api/v1/admin/devices").header("Authorization", "Bearer $token").post(body).build()).execute().use { r -> if (!r.isSuccessful) error("Create failed ${r.code}"); val d = JSONObject(r.body?.string() ?: error("Empty response")).getJSONObject("device"); runOnUiThread { done(d.getString("pairing_code")) } } } catch (e: Exception) { runOnUiThread { done(e.message ?: "Create failed") } } }
 
-    private fun call(path: String): String {
-        val r = http.newCall(Request.Builder().url(baseUrl + path).header("Authorization", "Bearer $token").get().build()).execute()
-        if (!r.isSuccessful) throw Exception("Request failed ${r.code}")
-        return r.body?.string() ?: "{}"
-    }
-
-    private fun createDevice(name: String, done: (String) -> Unit) = executor.submit {
-        try {
-            val body = JSONObject().put("name", name).toString().toRequestBody("application/json".toMediaType())
-            http.newCall(Request.Builder().url("$baseUrl/api/v1/admin/devices").header("Authorization", "Bearer $token").post(body).build()).execute().use { r ->
-                if (!r.isSuccessful) error("Create failed ${r.code}")
-                val d = JSONObject(r.body?.string() ?: error("Empty response")).getJSONObject("device")
-                runOnUiThread { done(d.getString("pairing_code")) }
-            }
-        } catch (e: Exception) { runOnUiThread { done(e.message ?: "Create failed") } }
-    }
-
-    private fun assign(deviceId: String, ids: List<String>, done: () -> Unit) = executor.submit {
-        try {
-            val arr = JSONArray(); ids.forEach { arr.put(it) }
-            val body = JSONObject().put("employeeIds", arr).toString().toRequestBody("application/json".toMediaType())
-            http.newCall(Request.Builder().url("$baseUrl/api/v1/admin/devices/$deviceId/assign").header("Authorization", "Bearer $token").post(body).build()).execute().use { r -> if (!r.isSuccessful) error("Assign failed ${r.code}") }
-            runOnUiThread(done)
-        } catch (_: Exception) { }
-    }
+    private fun assign(deviceId: String, ids: List<String>, done: () -> Unit) = executor.submit { try { val arr = JSONArray(); ids.forEach { arr.put(it) }; val body = JSONObject().put("employeeIds", arr).toString().toRequestBody("application/json".toMediaType()); http.newCall(Request.Builder().url("$baseUrl/api/v1/admin/devices/$deviceId/assign").header("Authorization", "Bearer $token").post(body).build()).execute().use { r -> if (!r.isSuccessful) error("Assign failed ${r.code}") }; runOnUiThread(done) } catch (_: Exception) {} }
 
     private fun createEmployee(code: String, name: String, dept: String, uri: Uri, done: () -> Unit) {
         executor.submit {
@@ -331,25 +221,18 @@ class MainActivity : ComponentActivity() {
                             val body = JSONObject().put("employeeCode", code).put("name", name).put("department", dept).put("faceTemplate", arr).toString().toRequestBody("application/json".toMediaType())
                             http.newCall(Request.Builder().url("$baseUrl/api/v1/admin/employees").header("Authorization", "Bearer $token").post(body).build()).execute().use { r -> if (!r.isSuccessful) error("Create failed ${r.code}") }
                             runOnUiThread(done)
-                        } catch (_: Exception) { }
+                        } catch (_: Exception) {}
                     }
                 }
-            } catch (_: Exception) { }
+            } catch (_: Exception) {}
         }
     }
 
     private fun template(src: Bitmap, box: Rect): FloatArray? {
-        val p = (box.width() * .18f).toInt()
-        val l = (box.left - p).coerceAtLeast(0); val t = (box.top - p).coerceAtLeast(0)
-        val r = (box.right + p).coerceAtMost(src.width); val b = (box.bottom + p).coerceAtMost(src.height)
+        val p = (box.width() * .18f).toInt(); val l = (box.left - p).coerceAtLeast(0); val t = (box.top - p).coerceAtLeast(0); val r = (box.right + p).coerceAtMost(src.width); val b = (box.bottom + p).coerceAtMost(src.height)
         if (r <= l || b <= t) return null
-        val s = Bitmap.createScaledBitmap(Bitmap.createBitmap(src, l, t, r - l, b - t), 32, 32, true)
-        val a = FloatArray(1024); var k = 0; var m = 0f
+        val s = Bitmap.createScaledBitmap(Bitmap.createBitmap(src, l, t, r - l, b - t), 32, 32, true); val a = FloatArray(1024); var k = 0; var m = 0f
         for (y in 0..31) for (x in 0..31) { val c = s.getPixel(x, y); val v = (.299f * ((c shr 16) and 255) + .587f * ((c shr 8) and 255) + .114f * (c and 255)) / 255f; a[k++] = v; m += v }
-        m /= 1024f; var n = 0f
-        for (i in a.indices) { a[i] -= m; n += a[i] * a[i] }
-        n = sqrt(n).coerceAtLeast(.0001f)
-        for (i in a.indices) a[i] /= n
-        return a
+        m /= 1024f; var n = 0f; for (i in a.indices) { a[i] -= m; n += a[i] * a[i] }; n = sqrt(n).coerceAtLeast(.0001f); for (i in a.indices) a[i] /= n; return a
     }
 }
