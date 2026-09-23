@@ -23,12 +23,15 @@ CREATE TABLE IF NOT EXISTS devices (
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   pairing_code TEXT UNIQUE,
+  pairing_expires_at TIMESTAMPTZ,
   device_token_hash TEXT,
   status TEXT NOT NULL DEFAULT 'offline' CHECK (status IN ('online','offline','revoked')),
   app_version TEXT,
   last_seen_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS pairing_expires_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
