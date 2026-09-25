@@ -1,4 +1,4 @@
-name: Build and Release v1.6.2
+name: Build and Release v1.6.2 (fixed)
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
           done
       - name: Build Android APKs
         working-directory: android
-        run: gradle --no-daemon --stacktrace :attendance-app:assembleDebug :admin-app:assembleDebug
+        run: gradle --no-daemon --stacktrace --warning-mode all :attendance-app:assembleDebug :admin-app:assembleDebug
       - name: Verify and stage APKs
         shell: bash
         run: |
