@@ -88,5 +88,32 @@ class MainActivity:ComponentActivity(){
  private fun cosine(a:FloatArray,b:FloatArray):Float{if(a.size!=b.size)return -1f;var d=0f;var na=0f;var nb=0f;for(i in a.indices){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i]};return d/(sqrt(na*nb).coerceAtLeast(1e-8f))}
  private fun submit(kind:String,id:String,score:Float,done:(String)->Unit){if(busy)return;busy=true;val cap=capture?:run{busy=false;done("Camera not ready");return};executor.execute{val file=File.createTempFile("attendance_",".jpg",cacheDir);cap.takePicture(ImageCapture.OutputFileOptions.Builder(file).build(),executor,object:ImageCapture.OnImageSavedCallback{override fun onError(e:ImageCaptureException){busy=false;runOnUiThread{done("Photo capture failed")}};override fun onImageSaved(r:ImageCapture.OutputFileResults){try{val sig=http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/cloudinary/signature").get())).execute().use{x->if(!x.isSuccessful)error("Cloudinary authorization failed");JSONObject(x.body?.string()?:error("Empty signature"))};val upload=MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart("file",file.name,file.asRequestBody("image/jpeg".toMediaType())).addFormDataPart("api_key",sig.getString("apiKey")).addFormDataPart("timestamp",sig.getString("timestamp")).addFormDataPart("signature",sig.getString("signature")).addFormDataPart("folder",sig.getString("folder")).build();val cloud=http.newCall(Request.Builder().url("https://api.cloudinary.com/v1_1/${sig.getString("cloudName")}/image/upload").post(upload).build()).execute().use{x->if(!x.isSuccessful)error("Photo upload failed");JSONObject(x.body?.string()?:error("Empty upload"))};val event=JSONObject().put("clientEventId",UUID.randomUUID().toString()).put("employeeId",id).put("status",kind).put("capturedAt",Instant.now().toString()).put("faceMatchScore",score).put("cloudinaryPublicId",cloud.optString("public_id")).put("cloudinaryAssetId",cloud.optString("asset_id")).put("photoSecureUrl",cloud.optString("secure_url"));http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance").post(event.toString().toRequestBody("application/json".toMediaType())))).execute().use{x->if(!x.isSuccessful)error(if(x.code==409)"Same status was already recorded recently" else "Attendance submission failed (${x.code})")};file.delete();busy=false;runOnUiThread{done("Attendance recorded: $kind")}}catch(e:Exception){file.delete();busy=false;runOnUiThread{done(e.message?:"Attendance failed")}}}})}}
  private fun auth(b:Request.Builder)=b.header("x-device-token",deviceToken?:"").build()
- private fun yuvToBitmap(p:ImageProxy,rotation:Int):Bitmap{val y=p.planes[0].buffer.duplicate();val u=p.planes[1].buffer.duplicate();val v=p.planes[2].buffer.duplicate();val yb=ByteArray(y.remaining()).also{y.get(it)};val ub=ByteArray(u.remaining()).also{u.get(it)};val vb=ByteArray(v.remaining()).also{v.get(it)};val w=p.width;val h=p.height;val nv=ByteArray(w*h+w*h/2);System.arraycopy(yb,0,nv,0,minOf(yb.size,w*h));var pos=w*h;for(row in 0 until h/2)for(col in 0 until w/2){val ui=row*p.planes[1].rowStride+col*p.planes[1].pixelStride;val vi=row*p.planes[2].rowStride+col*p.planes[2].pixelStride;if(ui<ub.size&&vi<vb.size&&pos+1<nv.size){nv[pos++]=vb[vi];nv[pos++]=ub[ui]}};val out=ByteArrayOutputStream();YuvImage(nv,ImageFormat.NV21,w,h,null).compressToJpeg(Rect(0,0,w,h),82,out);val raw=BitmapFactory.decodeByteArray(out.toByteArray(),0,out.size())?:error("Camera decode failed");if(rotation==0)return raw;return Bitmap.createBitmap(raw,0,0,raw.width,raw.height,Matrix().apply{postRotate(rotation.toFloat())},true)}
+ private fun yuvToBitmap(p:ImageProxy,rotation:Int):Bitmap{
+  val w=p.width
+  val h=p.height
+  val yPlane=p.planes[0]
+  val uPlane=p.planes[1]
+  val vPlane=p.planes[2]
+  val nv=ByteArray(w*h+w*h/2)
+  var out=0
+  for(row in 0 until h){
+    val rowStart=row*yPlane.rowStride
+    for(col in 0 until w){
+      nv[out++]=yPlane.buffer.get(rowStart+col*yPlane.pixelStride)
+    }
+  }
+  for(row in 0 until h/2){
+    val uRow=row*uPlane.rowStride
+    val vRow=row*vPlane.rowStride
+    for(col in 0 until w/2){
+      nv[out++]=vPlane.buffer.get(vRow+col*vPlane.pixelStride)
+      nv[out++]=uPlane.buffer.get(uRow+col*uPlane.pixelStride)
+    }
+  }
+  val outJpeg=ByteArrayOutputStream()
+  YuvImage(nv,ImageFormat.NV21,w,h,null).compressToJpeg(Rect(0,0,w,h),90,outJpeg)
+  val raw=BitmapFactory.decodeByteArray(outJpeg.toByteArray(),0,outJpeg.size())?:error("Camera decode failed")
+  if(rotation==0)return raw
+  return Bitmap.createBitmap(raw,0,0,raw.width,raw.height,Matrix().apply{postRotate(rotation.toFloat())},true)
+ }
 }
