@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS employees (
   active BOOLEAN NOT NULL DEFAULT true,
   face_template BYTEA,
   face_model_version TEXT,
+  face_photo_secure_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(business_id, employee_code)
 );
