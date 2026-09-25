@@ -33,8 +33,6 @@ CREATE TABLE IF NOT EXISTS devices (
 
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS pairing_expires_at TIMESTAMPTZ;
 
-ALTER TABLE employees ADD COLUMN IF NOT EXISTS face_photo_secure_url TEXT;
-
 CREATE TABLE IF NOT EXISTS employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
@@ -48,6 +46,8 @@ CREATE TABLE IF NOT EXISTS employees (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(business_id, employee_code)
 );
+
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS face_photo_secure_url TEXT;
 
 CREATE TABLE IF NOT EXISTS device_employees (
   device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
