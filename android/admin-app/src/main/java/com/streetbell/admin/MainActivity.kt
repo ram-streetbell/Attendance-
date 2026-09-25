@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.window.Dialog
-import coil3.compose.AsyncImage
+import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
