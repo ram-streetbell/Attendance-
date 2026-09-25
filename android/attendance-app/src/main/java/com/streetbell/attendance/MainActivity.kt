@@ -75,7 +75,7 @@ class MainActivity:ComponentActivity(){
     override fun onImageSaved(r:ImageCapture.OutputFileResults){
      try{
       val event=JSONObject().put("clientEventId",UUID.randomUUID().toString()).put("employeeId",id).put("status",kind).put("capturedAt",Instant.now().toString()).put("faceMatchScore",score)
-      val attendance=http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance").post(event.toString().toRequestBody("application/json".toMediaType())).build())).execute().use{x->
+      val attendance=http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance").post(event.toString().toRequestBody("application/json".toMediaType())))).execute().use{x->
        val body=x.body?.string()?:"{}"
        if(!x.isSuccessful){val msg=runCatching{JSONObject(body).optString("error",body)}.getOrDefault(body);error(if(x.code==409)"Same status was already recorded recently" else "Attendance submission failed (${x.code}): $msg")}
        JSONObject(body)
@@ -99,7 +99,7 @@ class MainActivity:ComponentActivity(){
        }
        if(eventId.isNotBlank()){
         val photo=JSONObject().put("cloudinaryPublicId",cloud.optString("public_id")).put("cloudinaryAssetId",cloud.optString("asset_id")).put("photoSecureUrl",cloud.optString("secure_url"))
-        http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance/$eventId/photo").method("PATCH",photo.toString().toRequestBody("application/json".toMediaType())).build())).execute().use{x->if(!x.isSuccessful)error("Photo record update failed (${x.code})")}
+        http.newCall(auth(Request.Builder().url("$baseUrl/api/v1/device/attendance/$eventId/photo").method("PATCH",photo.toString().toRequestBody("application/json".toMediaType())))).execute().use{x->if(!x.isSuccessful)error("Photo record update failed (${x.code})")}
        }
       }
       file.delete();busy=false;runOnUiThread{done("Attendance recorded: $kind")}
